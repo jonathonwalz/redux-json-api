@@ -12,11 +12,9 @@ export const makeUpdateReverseRelationship = (
   }
 ) => {
   return (foreignResources) => {
-    const idx = foreignResources.findIndex(item => (
-      item.id === relationship.data.id
-    ));
+    const idx = relationship.data.id;
 
-    if (idx === -1) {
+    if (hasOwnProperties(foreignResources, idx)) {
       return foreignResources;
     }
 
@@ -86,15 +84,9 @@ export const makeUpdateReverseRelationship = (
 };
 
 const stateContainsResource = (state, resource) => {
-  const updatePath = [resource.type, 'data'];
+  const updatePath = [resource.type, 'data', resource.id];
 
-  if (hasOwnProperties(state, updatePath)) {
-    return state[resource.type].data.findIndex(
-      item => item.id === resource.id
-    ) > -1;
-  }
-
-  return false;
+  return hasOwnProperties(state, updatePath);
 };
 
 export const addLinksToState = (state, links, options) => {
@@ -116,15 +108,15 @@ export const updateOrInsertResource = (state, resource) => {
   let newState = state;
   const updatePath = [resource.type, 'data'];
 
+  const idx = resource.id;
   if (stateContainsResource(state, resource)) {
     const resources = state[resource.type].data;
-    const idx = resources.findIndex(item => item.id === resource.id);
 
     if (!equal(resources[idx], resource)) {
       newState = imm.set(newState, updatePath.concat(idx), resource);
     }
   } else {
-    newState = imm.push(newState, updatePath, resource);
+    newState = imm.set(newState, updatePath.concat(idx), resource);
   }
 
   const rels = resource.relationships;
@@ -159,8 +151,7 @@ export const updateOrInsertResource = (state, resource) => {
 };
 
 export const removeResourceFromState = (state, resource) => {
-  const index = state[resource.type].data.findIndex(e => e.id === resource.id);
-  const path = [resource.type, 'data', index];
+  const path = [resource.type, 'data', resource.id];
   const entityRelationships = resource.relationships || {};
 
   return Object.keys(entityRelationships).reduce((newState, key) => {
@@ -194,8 +185,7 @@ export const updateOrInsertResourcesIntoState = (state, resources) => (
 );
 
 export const setIsInvalidatingForExistingResource = (state, { type, id }, value = null) => {
-  const idx = state[type].data.findIndex(e => e.id === id && e.type === type);
-  const updatePath = [type, 'data', idx, 'isInvalidating'];
+  const updatePath = [type, 'data', id, 'isInvalidating'];
 
   return value === null
     ? imm(state).del(updatePath)
@@ -206,5 +196,5 @@ export const ensureResourceTypeInState = (state, type) => {
   const path = [type, 'data'];
   return hasOwnProperties(state, [type])
     ? state
-    : imm(state).set(path, []).value();
+    : imm(state).set(path, {}).value();
 };
